@@ -1,0 +1,26 @@
+{
+  "file_name": "temp_upload.pdf",
+  "total_pages": 370,
+  "sections": [
+    "Introduction",
+    "Financial Performance",
+    "Financial Statements"
+  ],
+  "stats": {
+    "Introduction": {
+      "word_count": 2677,
+      "char_count": 18892,
+      "line_count": 1
+    },
+    "Financial Performance": {
+      "word_count": 93077,
+      "char_count": 611339,
+      "line_count": 1
+    },
+    "Financial Statements": {
+      "word_count": 87589,
+      "char_count": 557427,
+      "line_count": 1
+    }
+  }
+}

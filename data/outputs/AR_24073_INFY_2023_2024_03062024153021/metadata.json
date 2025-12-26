@@ -1,0 +1,68 @@
+{
+  "file_name": "AR_24073_INFY_2023_2024_03062024153021.pdf",
+  "total_pages": 353,
+  "sections": [
+    "Introduction",
+    "Business Overview",
+    "Corporate Governance",
+    "Financial Performance",
+    "Risk Management",
+    "Financial Statements",
+    "Auditor's Report",
+    "Executive Summary",
+    "Future Outlook",
+    "Management Discussion"
+  ],
+  "stats": {
+    "Introduction": {
+      "word_count": 1501,
+      "char_count": 10272,
+      "line_count": 1
+    },
+    "Business Overview": {
+      "word_count": 127,
+      "char_count": 950,
+      "line_count": 1
+    },
+    "Corporate Governance": {
+      "word_count": 28,
+      "char_count": 228,
+      "line_count": 1
+    },
+    "Financial Performance": {
+      "word_count": 1596,
+      "char_count": 10437,
+      "line_count": 1
+    },
+    "Risk Management": {
+      "word_count": 131,
+      "char_count": 853,
+      "line_count": 1
+    },
+    "Financial Statements": {
+      "word_count": 215,
+      "char_count": 1402,
+      "line_count": 1
+    },
+    "Auditor's Report": {
+      "word_count": 26,
+      "char_count": 158,
+      "line_count": 1
+    },
+    "Executive Summary": {
+      "word_count": 65,
+      "char_count": 433,
+      "line_count": 1
+    },
+    "Future Outlook": {
+      "word_count": 799,
+      "char_count": 5373,
+      "line_count": 1
+    },
+    "Management Discussion": {
+      "word_count": 229,
+      "char_count": 1523,
+      "line_count": 1
+    }
+  }
+}

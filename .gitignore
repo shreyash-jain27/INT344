@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+*.pdf
+temp_upload.pdf
+models/
+punjabi-translator-finetuned/
+indic_nlp_resources/
+eval_output/
+.ipynb_checkpoints/
+*.pyc
+.env
