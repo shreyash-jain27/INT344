@@ -3,14 +3,6 @@
 # Transformer-based abstractive summarization
 # ============================================
 
-import torch
-from transformers import (
-    pipeline,
-    AutoTokenizer,
-    AutoModelForSeq2SeqLM,
-    BartForConditionalGeneration,
-    BartTokenizer
-)
 from typing import List, Dict, Optional
 import re
 import numpy as np
@@ -41,6 +33,7 @@ class AbstractiveSummarizer:
         
         # Auto-detect device
         if device is None:
+            import torch
             self.device = 0 if torch.cuda.is_available() else -1
         else:
             self.device = 0 if device == 'cuda' else -1
@@ -61,6 +54,9 @@ class AbstractiveSummarizer:
             return
         
         print("   Loading model (this may take a minute)...")
+        
+        import torch
+        from transformers import pipeline, AutoTokenizer
         
         try:
             # Try pipeline first (easier)
@@ -222,9 +218,11 @@ class AbstractiveSummarizer:
                     )
                     
                     if self.device == 0:
+                        import torch
                         inputs = {k: v.to('cuda') for k, v in inputs.items()}
                     
-                    summary_ids = self.model.generate(
+                    with torch.no_grad():
+                        summary_ids = self.model.generate(
                         inputs['input_ids'],
                         max_length=chunk_max_length,
                         min_length=min(min_length, chunk_max_length - 10),
@@ -364,6 +362,7 @@ def get_best_model(use_gpu: bool = True) -> str:
     if not use_gpu:
         return 't5-small'  # Smaller, faster on CPU
     
+    import torch
     # Check GPU memory
     try:
         if torch.cuda.is_available():

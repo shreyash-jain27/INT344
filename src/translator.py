@@ -6,8 +6,6 @@
 import time
 from typing import Dict, List, Optional, Tuple
 from deep_translator import GoogleTranslator
-import torch
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
 try:
     from .language_detector import LanguageDetector
@@ -45,6 +43,7 @@ class MultilingualTranslator:
     }
     
     def __init__(self, use_gpu: bool = True):
+        import torch
         self.use_gpu = use_gpu and torch.cuda.is_available()
         self.language_detector = LanguageDetector()
         
@@ -64,8 +63,11 @@ class MultilingualTranslator:
         """Load IndicBART model for better Indian language translation"""
         if self.indic_model is not None:
             return
+            
+        import torch
+        from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
         
-        print("\n🤖 Loading IndicBART translation model...")
+        print("\n🤖 Loading IndicBART for translation...")
         print("   This may take a few minutes on first use...")
         
         try:
@@ -247,6 +249,7 @@ class MultilingualTranslator:
                 inputs = {k: v.to('cuda') for k, v in inputs.items()}
             
             # Generate translation
+            import torch
             with torch.no_grad():
                 generated_tokens = self.indic_model.generate(
                     **inputs,
@@ -283,6 +286,8 @@ class MultilingualTranslator:
         print(f"\n🤖 Loading local Punjabi translation model from {self.local_model_path}...")
         
         try:
+            import torch
+            from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
             self.punjabi_tokenizer = AutoTokenizer.from_pretrained(self.local_model_path)
             self.punjabi_model = AutoModelForSeq2SeqLM.from_pretrained(self.local_model_path)
             

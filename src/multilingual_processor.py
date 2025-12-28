@@ -5,15 +5,14 @@
 
 import re
 from typing import List, Dict, Optional
-from indicnlp.tokenize import sentence_tokenize, indic_tokenize
-from indicnlp.normalize import indic_normalize
-from indicnlp import common
 
 # Set IndicNLP data path
-try:
-    common.set_resources_path("indicnlp_resources")
-except:
-    pass
+def _setup_indicnlp():
+    try:
+        from indicnlp import common
+        common.set_resources_path("indicnlp_resources")
+    except:
+        pass
 
 
 class MultilingualProcessor:
@@ -38,7 +37,8 @@ class MultilingualProcessor:
     }
     
     def __init__(self):
-        self.normalizer_factory = indic_normalize.IndicNormalizerFactory()
+        _setup_indicnlp()
+        self.normalizer_factory = None
     
     def normalize_text(self, text: str, lang: str) -> str:
         """
@@ -50,6 +50,9 @@ class MultilingualProcessor:
         
         try:
             # Get normalizer for language
+            if self.normalizer_factory is None:
+                from indicnlp.normalize import indic_normalize
+                self.normalizer_factory = indic_normalize.IndicNormalizerFactory()
             normalizer = self.normalizer_factory.get_normalizer(lang)
             
             # Normalize
@@ -78,6 +81,7 @@ class MultilingualProcessor:
         
         # For Indian languages
         try:
+            from indicnlp.tokenize import sentence_tokenize
             lang_code = self.LANGUAGE_CONFIG.get(lang, {}).get('code', lang)
             sentences = sentence_tokenize.sentence_split(text, lang=lang_code)
             return sentences
@@ -99,6 +103,7 @@ class MultilingualProcessor:
         
         # For Indian languages
         try:
+            from indicnlp.tokenize import indic_tokenize
             lang_code = self.LANGUAGE_CONFIG.get(lang, {}).get('code', lang)
             words = indic_tokenize.trivial_tokenize(text, lang=lang_code)
             return words

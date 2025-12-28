@@ -3,8 +3,6 @@
 # Summarization for multiple Indian languages
 # ============================================
 
-import torch
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, pipeline
 from typing import Dict, List, Optional
 import time
 
@@ -27,6 +25,7 @@ class MultilingualSummarizer:
     """
     
     def __init__(self, use_gpu: bool = True):
+        import torch
         self.use_gpu = use_gpu and torch.cuda.is_available()
         
         # Initialize components
@@ -54,12 +53,13 @@ class MultilingualSummarizer:
         print("\n🤖 Loading IndicBART for summarization...")
         
         try:
+            from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
             model_name = "ai4bharat/IndicBARTSS"
             
             self.indic_tokenizer = AutoTokenizer.from_pretrained(
                 model_name,
                 do_lower_case=False,
-                use_fast=False
+                # use_fast=False
             )
             
             self.indic_model = AutoModelForSeq2SeqLM.from_pretrained(
@@ -84,6 +84,7 @@ class MultilingualSummarizer:
         print("\n🤖 Loading mBART...")
         
         try:
+            from transformers import pipeline
             self.mbart_pipeline = pipeline(
                 "summarization",
                 model="facebook/mbart-large-50",
@@ -230,6 +231,7 @@ class MultilingualSummarizer:
                 inputs = {k: v.to('cuda') for k, v in inputs.items()}
             
             # Generate summary
+            import torch
             with torch.no_grad():
                 summary_ids = self.indic_model.generate(
                     **inputs,
