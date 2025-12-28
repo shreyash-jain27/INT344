@@ -5,7 +5,6 @@
 
 import time
 from typing import Dict, List, Optional, Tuple
-from deep_translator import GoogleTranslator
 
 try:
     from .language_detector import LanguageDetector
@@ -190,6 +189,7 @@ class MultilingualTranslator:
             chunks = self._split_into_chunks(text, max_length=4000)
             
             translated_chunks = []
+            from deep_translator import GoogleTranslator
             for chunk in chunks:
                 translator = GoogleTranslator(
                     source=source_code,
