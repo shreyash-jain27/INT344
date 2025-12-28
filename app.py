@@ -583,9 +583,9 @@ if uploaded_file:
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        # Copy button in expander to keep UI clean
-                        with st.expander("📋 Copy Summary"):
-                            st.code(result.summary, language=None)
+                        # Copy section
+                        st.markdown("**📋 Copy Summary**")
+                        st.code(result.summary, language=None)
                     
                     with tab2:
                         st.markdown("**Original Text:**")
@@ -599,7 +599,9 @@ if uploaded_file:
                         )
                     
                     # Quality metrics
-                    with st.expander("📊 Quality Metrics"):
+                    st.markdown("---")
+                    st.markdown("### 📊 Quality Metrics")
+                    with st.container():
                         metrics = summarizer.evaluate_summary(
                             sections[section_name],
                             result.summary
@@ -1031,13 +1033,15 @@ Processing Time: {st.session_state['summ_time']:.1f}s
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    # Copy button in expander
-                    with st.expander("📋 Copy Multilingual Summary"):
-                        st.code(result['summary'], language=None)
+                    # Copy section
+                    st.markdown("**📋 Copy Multilingual Summary**")
+                    st.code(result['summary'], language=None)
                     
                     # Show original if different language
                     if source_lang != output_lang:
-                        with st.expander("📄 View Original"):
+                        st.markdown("---")
+                        st.markdown("### 📄 Original Text")
+                        with st.container():
                             original_text = sections[section_name]
                             st.text_area(
                                 "Original Text",
