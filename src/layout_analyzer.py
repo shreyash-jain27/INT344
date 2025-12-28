@@ -336,16 +336,33 @@ class LayoutAnalyzer:
             }
             
             # Draw rectangles around blocks
+            print(f"   Image size: {img.width}x{img.height}")
+            print(f"   PDF page size (from metadata): {page.width if 'page' in locals() else 'unknown'}x{page.height if 'page' in locals() else 'unknown'}")
+            
+            # Simple scaling factor: ratio of pixels to points
+            # Standard PDF points are 72 DPI. 
+            # If DPI=150 in convert_from_path, scale is 150/72
+            scale_x = img.width / 612.0  # Default A4 width
+            scale_y = img.height / 792.0 # Default A4 height (Letter size actually, safer to use points)
+            
+            # Use actual page cropbox if possible
+            try:
+                with pdfplumber.open(self.pdf_path) as pdf:
+                    p = pdf.pages[page_num-1]
+                    scale_x = img.width / float(p.width)
+                    scale_y = img.height / float(p.height)
+            except:
+                pass
+
             for block in page_blocks:
                 color = colors.get(block.block_type, 'black')
                 
                 # Scale bbox (PDF coordinates to image coordinates)
-                scale = img.height / 842  # A4 height in points
                 bbox = [
-                    block.bbox[0] * scale,
-                    block.bbox[1] * scale,
-                    block.bbox[2] * scale,
-                    block.bbox[3] * scale
+                    block.bbox[0] * scale_x,
+                    block.bbox[1] * scale_y,
+                    block.bbox[2] * scale_x,
+                    block.bbox[3] * scale_y
                 ]
                 
                 draw.rectangle(bbox, outline=color, width=3)

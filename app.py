@@ -7,6 +7,7 @@ from pathlib import Path
 import streamlit as st
 import time
 import io
+import os
 
 # Add src to path
 sys.path.append(str(Path(__file__).parent / "src"))
@@ -435,8 +436,14 @@ if uploaded_file:
                 
                 if viz_path and Path(viz_path).exists():
                     st.image(viz_path, caption=f"Layout Analysis - Page {page_to_viz}")
+                    # Cleanup after showing
+                    try:
+                        os.remove(viz_path)
+                    except:
+                        pass
                 else:
-                    st.warning("Could not generate visualization")
+                    st.error("❌ Could not generate visualization.")
+                    st.info("💡 Note: This can happen if Poppler is not installed on your system. Layout visualization depends on `pdf2image` which requires Poppler.")
         
         st.markdown("---")
             
