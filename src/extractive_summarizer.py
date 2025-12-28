@@ -113,10 +113,23 @@ class ExtractiveSummarizer:
                 from sklearn.metrics import pairwise_distances_argmin_min
                 
                 print("Loading BERT model for extractive summarization...")
-                self.bert_model = SentenceTransformer('all-MiniLM-L6-v2')
+                # Robust loading with CUDA error handling
+                import torch
+                device = "cuda" if torch.cuda.is_available() else "cpu"
+                
+                try:
+                    self.bert_model = SentenceTransformer('all-MiniLM-L6-v2', device=device)
+                    print(f"✓ BERT model loaded on {device}")
+                except Exception as gpu_err:
+                    if device == "cuda":
+                        print(f"⚠️ GPU load failed, falling back to CPU: {gpu_err}")
+                        self.bert_model = SentenceTransformer('all-MiniLM-L6-v2', device="cpu")
+                        print("✓ BERT model loaded on CPU")
+                    else:
+                        raise gpu_err
+                
                 self._kmeans = KMeans
                 self._pairwise_distances_argmin_min = pairwise_distances_argmin_min
-                print("✓ BERT model loaded")
             except ImportError:
                 print("⚠️ sentence-transformers or sklearn not installed. Falling back to LSA.")
                 return self.summarize(text, method='lsa', sentences_count=num_sentences)
@@ -125,19 +138,35 @@ class ExtractiveSummarizer:
         if len(sentences) <= num_sentences:
             return text
             
-        # Embed sentences
-        embeddings = self.bert_model.encode(sentences)
-        
-        # Cluster
-        num_clusters = min(num_sentences, len(sentences))
-        kmeans = self._kmeans(n_clusters=num_clusters, random_state=42, n_init=10)
-        kmeans.fit(embeddings)
-        
-        # Find closest sentence to each cluster center
-        closest, _ = self._pairwise_distances_argmin_min(kmeans.cluster_centers_, embeddings)
-        closest = sorted(closest)
-        
-        return " ".join([sentences[i] for i in closest])
+        try:
+            # Embed sentences
+            try:
+                embeddings = self.bert_model.encode(sentences)
+            except Exception as e:
+                if "CUDA error" in str(e) or "device-side assert" in str(e):
+                    print(f"⚠️ CUDA error detected during BERT encoding: {e}. Switching model to CPU...")
+                    # This is tricky because SentenceTransformer might keep the old device state
+                    # We'll try to re-init on CPU
+                    from sentence_transformers import SentenceTransformer
+                    self.bert_model = SentenceTransformer('all-MiniLM-L6-v2', device='cpu')
+                    embeddings = self.bert_model.encode(sentences)
+                else:
+                    raise e
+            
+            # Cluster
+            num_clusters = min(num_sentences, len(sentences))
+            kmeans = self._kmeans(n_clusters=num_clusters, random_state=42, n_init=10)
+            kmeans.fit(embeddings)
+            
+            # Find closest sentence to each cluster center
+            closest, _ = self._pairwise_distances_argmin_min(kmeans.cluster_centers_, embeddings)
+            closest = sorted(closest)
+            
+            return " ".join([sentences[i] for i in closest])
+            
+        except Exception as e:
+            print(f"⚠️ BERT summarization failed completely: {e}. Falling back to LSA.")
+            return self.summarize(text, method='lsa', sentences_count=num_sentences)
 
 if __name__ == "__main__":
     # Test

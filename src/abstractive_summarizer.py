@@ -64,6 +64,7 @@ class AbstractiveSummarizer:
         
         try:
             # Try pipeline first (easier)
+            print(f"   Attempting to load on: {'GPU' if self.device == 0 else 'CPU'}...")
             self.pipeline = pipeline(
                 "summarization",
                 model=self.model_name,
@@ -72,30 +73,29 @@ class AbstractiveSummarizer:
             )
             
             print("   ✓ Model loaded successfully!")
-            
-            # Always load tokenizer for accurate chunking
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
             self._is_loaded = True
             
         except Exception as e:
-            print(f"   ⚠️ Pipeline failed, trying manual loading: {e}")
-            
-            # Manual loading
-            try:
-                self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-                self.model = AutoModelForSeq2SeqLM.from_pretrained(
-                    self.model_name,
-                    torch_dtype=torch.float16 if self.device == 0 else torch.float32
-                )
-                
-                if self.device == 0:
-                    self.model = self.model.to('cuda')
-                
-                print("   ✓ Model loaded successfully!")
-                self._is_loaded = True
-                
-            except Exception as e2:
-                print(f"   ❌ Failed to load model: {e2}")
+            if self.device == 0:
+                print(f"   ⚠️ GPU loading failed ({str(e)}). Falling back to CPU...")
+                # Force CPU
+                self.device = -1
+                try:
+                    self.pipeline = pipeline(
+                        "summarization",
+                        model=self.model_name,
+                        device=-1,
+                        torch_dtype=torch.float32
+                    )
+                    self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+                    self._is_loaded = True
+                    print("   ✓ Model loaded successfully on CPU!")
+                except Exception as e_cpu:
+                    print(f"   ❌ Final manual loading also failed: {e_cpu}")
+                    raise
+            else:
+                print(f"   ❌ CPU loading failed: {e}")
                 raise
     
     def _chunk_text(self, text: str, max_length: int = 1024) -> List[str]:
@@ -365,15 +365,19 @@ def get_best_model(use_gpu: bool = True) -> str:
         return 't5-small'  # Smaller, faster on CPU
     
     # Check GPU memory
-    if torch.cuda.is_available():
-        gpu_memory = torch.cuda.get_device_properties(0).total_memory / 1e9
-        
-        if gpu_memory >= 6:  # 6GB or more
-            return 'facebook/bart-large-cnn'  # Best quality
-        elif gpu_memory >= 4:
-            return 't5-base'  # Good balance
-        else:
-            return 't5-small'  # Smaller footprint
+    try:
+        if torch.cuda.is_available():
+            gpu_memory = torch.cuda.get_device_properties(0).total_memory / 1e9
+            
+            if gpu_memory >= 6:  # 6GB or more
+                return 'facebook/bart-large-cnn'  # Best quality
+            elif gpu_memory >= 4:
+                return 't5-base'  # Good balance
+            else:
+                return 't5-small'  # Smaller footprint
+    except Exception as e:
+        print(f"⚠️ Error checking GPU memory: {e}. Defaulting to t5-small on CPU.")
+        return 't5-small'
     
     return 't5-small'
 
