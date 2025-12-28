@@ -9,3 +9,6 @@ eval_output/
 .ipynb_checkpoints/
 *.pyc
 .env
+
+viva_prep/
+
