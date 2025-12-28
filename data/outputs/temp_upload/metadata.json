@@ -1,25 +1,43 @@
 {
   "file_name": "temp_upload.pdf",
-  "total_pages": 370,
+  "total_pages": 221,
   "sections": [
     "Introduction",
     "Financial Performance",
+    "Risk Management",
+    "Corporate Governance",
+    "Management Discussion",
     "Financial Statements"
   ],
   "stats": {
     "Introduction": {
-      "word_count": 2677,
-      "char_count": 18892,
+      "word_count": 6899,
+      "char_count": 43500,
       "line_count": 1
     },
     "Financial Performance": {
-      "word_count": 93077,
-      "char_count": 611339,
+      "word_count": 829,
+      "char_count": 5121,
+      "line_count": 1
+    },
+    "Risk Management": {
+      "word_count": 8331,
+      "char_count": 54332,
+      "line_count": 1
+    },
+    "Corporate Governance": {
+      "word_count": 7853,
+      "char_count": 54018,
+      "line_count": 1
+    },
+    "Management Discussion": {
+      "word_count": 2520,
+      "char_count": 15680,
       "line_count": 1
     },
     "Financial Statements": {
-      "word_count": 87589,
-      "char_count": 557427,
+      "word_count": 21104,
+      "char_count": 133304,
       "line_count": 1
     }
   }

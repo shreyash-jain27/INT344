@@ -530,6 +530,8 @@ if uploaded_file:
         
         # Display summaries if generated
         if 'summaries' in st.session_state:
+            from summarizer import UnifiedSummarizer
+            summarizer = UnifiedSummarizer(use_gpu=use_gpu)
             results = st.session_state['summaries']
             
             st.markdown("---")
@@ -1022,7 +1024,7 @@ Processing Time: {st.session_state['summ_time']:.1f}s
                     st.markdown("---")
                     
                     # Summary
-                    st.markdown(f"### 📝 Summary in {output_name}")
+                    st.markdown(f"### 📝 Summary in {output_language[1]}")
                     
                     # Special styling based on language
                     font_size = "20px" if output_lang != 'en' else "18px"
