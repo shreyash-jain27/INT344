@@ -15,8 +15,11 @@ An intelligent, robust system to extract, analyze, and summarize Indian annual r
 - **Layout Analysis**: Page structure visualization with bounding box identification.
 - **Multilingual Support**:
   - Automatic Indian language detection.
-  - Summarization for Hindi, Tamil, Telugu, Bengali, Marathi, Gujarati, Kannada, and Malayalam.
-  - **IndicBART Support**: High-performance translation and summarization using local AI models.
+  - Summarization for Hindi, Tamil, Telugu, Bengali, Marathi, Gujarati, Kannada, Malayalam, Punjabi, Odia, and Assamese.
+  - **MBart-50 Support**: High-performance local translation and summarization using `facebook/mbart-large-50-many-to-many-mmt`.
+  - **Hybrid Translation Strategy**:
+    - Uses **MBart-50** for Hindi, Tamil, Telugu, Bengali, Marathi, Gujarati, and Malayalam.
+    - Falls back to **Google Translate** for languages not natively supported by MBart-50 (Kannada, Punjabi, Odia, Assamese).
 - **Interactive Visuals**: Plotly charts for section distribution and keyword frequency.
 - **Export Options**: Professional DOCX, CSV, and Text reports.
 
@@ -27,7 +30,7 @@ An intelligent, robust system to extract, analyze, and summarize Indian annual r
    git clone <repository-url>
    cd annual_report_summarizer
    python -m venv venv
-   source venv/bin/activate  # atau .\venv\Scripts\activate
+   source venv/bin/activate  # or .\venv\Scripts\activate
    ```
 
 2. **Dependencies**
@@ -37,7 +40,7 @@ An intelligent, robust system to extract, analyze, and summarize Indian annual r
 
 3. **Resources**
    - Ensure `tesseract` is installed for OCR features.
-   - The app will automatically download ~1.5GB of AI models on the first run of "Direct" multilingual summarization.
+   - The app will automatically download ~2.3GB of AI models (MBart-50) on the first run of "Direct" multilingual summarization.
 
 ## 🏃 Usage
 
@@ -60,7 +63,7 @@ annual_report_summarizer/
 │   ├── layout_analyzer.py       # Visual structure analysis
 │   ├── multilingual_summarizer.py # BART-based Indian language support
 │   ├── language_detector.py    # Auto-detection for 10+ languages
-│   ├── translator.py           # IndicBART & Google fallbacks
+│   ├── translator.py           # MBart-50 & Google fallbacks
 │   └── summarizer.py           # Extractive & Abstractive engines
 ├── app.py                      # Main Streamlit interface
 └── requirements.txt            # Project dependencies
