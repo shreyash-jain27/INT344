@@ -1,0 +1,9 @@
+langdetect
+opencv-python-headless
+pdf2image
+protobuf
+rouge-score
+sentencepiece
+sumy
+textstat
+transformers

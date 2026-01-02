@@ -1,4 +1,0 @@
-Section: Chairman's Message
-==================================================
-
-These efforts, alongside many others, contributed to a robust I believe every industry stands to benefit from GenAI—and
