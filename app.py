@@ -12,6 +12,12 @@ import os
 # Add src to path
 sys.path.append(str(Path(__file__).parent / "src"))
 
+# --- Critical Environment Fixes for Streamlit + Torch ---
+import os
+os.environ["PYTORCH_JIT"] = "0"  # Prevents torch inspect errors in Streamlit watcher
+os.environ["TESSDATA_PREFIX"] = str(Path(__file__).parent / "indic_nlp_resources" / "tessdata")
+# --------------------------------------------------------
+
 # --- Optimized Imports ---
 # Heavy AI models are now loaded lazily inside functions
 
@@ -984,88 +990,88 @@ Processing Time: {st.session_state['summ_time']:.1f}s
                 output_lang = st.session_state['multi_lang']
                 
                 st.markdown("---")
+                
+                # Statistics
+                st.subheader("📊 Summary Statistics")
+                
+                total_orig = sum(r.get('original_length', 0) for r in results.values())
+                total_summ = sum(r.get('summary_length', 0) for r in results.values())
+                avg_compression = (1 - total_summ/total_orig) * 100 if total_orig > 0 else 0
             
-            # Statistics
-            st.subheader("📊 Summary Statistics")
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Original Words", f"{total_orig:,}")
+                with col2:
+                    st.metric("Summary Words", f"{total_summ:,}")
+                with col3:
+                    st.metric("Compression", f"{avg_compression:.1f}%")
+                with col4:
+                    st.metric("Time", f"{st.session_state['multi_time']:.1f}s")
+                
+                st.markdown("---")
             
-            total_orig = sum(r.get('original_length', 0) for r in results.values())
-            total_summ = sum(r.get('summary_length', 0) for r in results.values())
-            avg_compression = (1 - total_summ/total_orig) * 100 if total_orig > 0 else 0
-            
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                st.metric("Original Words", f"{total_orig:,}")
-            with col2:
-                st.metric("Summary Words", f"{total_summ:,}")
-            with col3:
-                st.metric("Compression", f"{avg_compression:.1f}%")
-            with col4:
-                st.metric("Time", f"{st.session_state['multi_time']:.1f}s")
-            
-            st.markdown("---")
-            
-            # Display summaries
-            st.subheader(f"📝 Summaries in {output_language[1]}")
-            
-            for i, (section_name, result) in enumerate(results.items(), 1):
-                with st.expander(
-                    f"**{i}. {section_name}** "
-                    f"({result.get('original_length', 0)} → {result.get('summary_length', 0)} words)",
-                    expanded=(i <= 2)
-                ):
-                    # Metadata
-                    col1, col2, col3, col4 = st.columns(4)
-                    with col1:
-                        source_lang = result.get('source_lang', 'unknown')
-                        source_name = detector.get_language_info(source_lang).get('name', source_lang)
-                        st.metric("Source", source_name)
-                    with col2:
-                        target_lang = result.get('output_lang', output_lang)
-                        target_name = detector.get_language_info(target_lang).get('name', target_lang)
-                        st.metric("Output", target_name)
-                    with col3:
-                        st.metric("Method", result.get('method', 'unknown'))
-                    with col4:
-                        st.metric("Time", f"{result.get('processing_time', 0):.2f}s")
-                    
-                    st.markdown("---")
-                    
-                    # Summary
-                    st.markdown(f"### 📝 Summary in {output_language[1]}")
-                    
-                    # Special styling based on language
-                    font_size = "20px" if output_lang != 'en' else "18px"
-                    
-                    st.markdown(f"""
-                    <div class="summary-card" style="font-size: {font_size};">
-                        {result['summary']}
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # Copy section
-                    st.markdown("**📋 Copy Multilingual Summary**")
-                    st.code(result['summary'], language=None)
-                    
-                    # Show original if different language
-                    if source_lang != output_lang:
+                # Display summaries
+                st.subheader(f"📝 Summaries in {output_language[1]}")
+                
+                for i, (section_name, result) in enumerate(results.items(), 1):
+                    with st.expander(
+                        f"**{i}. {section_name}** "
+                        f"({result.get('original_length', 0)} → {result.get('summary_length', 0)} words)",
+                        expanded=(i <= 2)
+                    ):
+                        # Metadata
+                        col1, col2, col3, col4 = st.columns(4)
+                        with col1:
+                            source_lang = result.get('source_lang', 'unknown')
+                            source_name = detector.get_language_info(source_lang).get('name', source_lang)
+                            st.metric("Source", source_name)
+                        with col2:
+                            target_lang = result.get('output_lang', output_lang)
+                            target_name = detector.get_language_info(target_lang).get('name', target_lang)
+                            st.metric("Output", target_name)
+                        with col3:
+                            st.metric("Method", result.get('method', 'unknown'))
+                        with col4:
+                            st.metric("Time", f"{result.get('processing_time', 0):.2f}s")
+                        
                         st.markdown("---")
-                        st.markdown("### 📄 Original Text")
-                        with st.container():
-                            original_text = sections[section_name]
-                            st.text_area(
-                                "Original Text",
-                                original_text,
-                                height=200,
-                                label_visibility="collapsed",
-                                key=f"multi_orig_{i}"
-                            )
+                        
+                        # Summary
+                        st.markdown(f"### 📝 Summary in {output_language[1]}")
+                        
+                        # Special styling based on language
+                        font_size = "20px" if output_lang != 'en' else "18px"
+                        
+                        st.markdown(f"""
+                        <div class="summary-card" style="font-size: {font_size};">
+                            {result['summary']}
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # Copy section
+                        st.markdown("**📋 Copy Multilingual Summary**")
+                        st.code(result['summary'], language=None)
+                        
+                        # Show original if different language
+                        if source_lang != output_lang:
+                            st.markdown("---")
+                            st.markdown("### 📄 Original Text")
+                            with st.container():
+                                original_text = sections[section_name]
+                                st.text_area(
+                                    "Original Text",
+                                    original_text,
+                                    height=200,
+                                    label_visibility="collapsed",
+                                    key=f"multi_orig_{i}"
+                                )
             
-            # Download options
-            st.markdown("---")
-            st.subheader("📥 Download Multilingual Summaries")
-            
-            # Create download text
-            download_text = f"""
+                # Download options
+                st.markdown("---")
+                st.subheader("📥 Download Multilingual Summaries")
+                
+                # Create download text
+                download_text = f"""
 MULTILINGUAL ANNUAL REPORT SUMMARY
 {'=' * 80}
 
@@ -1079,23 +1085,23 @@ Processing Time: {st.session_state['multi_time']:.1f}s
 {'=' * 80}
 
 """
-            
-            for section_name, result in results.items():
-                download_text += f"\n{'=' * 80}\n"
-                download_text += f"{section_name.upper()}\n"
-                download_text += f"{'=' * 80}\n\n"
-                download_text += f"Source: {result.get('source_lang', 'unknown')} | "
-                download_text += f"Output: {result.get('output_lang', output_lang)} | "
-                download_text += f"Method: {result.get('method', 'unknown')}\n"
-                download_text += f"Compression: {result.get('compression_ratio', 0)*100:.1f}%\n\n"
-                download_text += result['summary'] + "\n"
-            
-            st.download_button(
-                label=f"📥 Download All ({output_language[1]})",
-                data=download_text.encode('utf-8'),
-                file_name=f"{Path(uploaded_file.name).stem}_summaries_{output_lang}.txt",
-                mime="text/plain"
-            )
+                
+                for section_name, result in results.items():
+                    download_text += f"\n{'=' * 80}\n"
+                    download_text += f"{section_name.upper()}\n"
+                    download_text += f"{'=' * 80}\n\n"
+                    download_text += f"Source: {result.get('source_lang', 'unknown')} | "
+                    download_text += f"Output: {result.get('output_lang', output_lang)} | "
+                    download_text += f"Method: {result.get('method', 'unknown')}\n"
+                    download_text += f"Compression: {result.get('compression_ratio', 0)*100:.1f}%\n\n"
+                    download_text += result['summary'] + "\n"
+                
+                st.download_button(
+                    label=f"📥 Download All ({output_language[1]})",
+                    data=download_text.encode('utf-8'),
+                    file_name=f"{Path(uploaded_file.name).stem}_summaries_{output_lang}.txt",
+                    mime="text/plain"
+                )
         
         else:
             st.info("👆 Select output language and click 'Generate' to create multilingual summaries")

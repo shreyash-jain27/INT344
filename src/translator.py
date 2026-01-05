@@ -40,26 +40,15 @@ class MultilingualTranslator:
         'mr': 'mr', 'gu': 'gu', 'kn': 'kn', 'ml': 'ml',
         'pa': 'pa', 'or': 'or', 'as': 'as', 'en': 'en'
     }
-
-    # MBart-50 Language Codes
-    MBART_CODES = {
-        'hi': 'hi_IN', 'ta': 'ta_IN', 'te': 'te_IN', 'bn': 'bn_IN',
-        'mr': 'mr_IN', 'gu': 'gu_IN', 'ml': 'ml_IN', 'en': 'en_XX',
-        # Languages supported by MBart-50
-        'ar': 'ar_AR', 'cs': 'cs_CZ', 'de': 'de_DE', 'es': 'es_XX', 'et': 'et_EE',
-        'fi': 'fi_FI', 'fr': 'fr_XX', 'it': 'it_IT', 'ja': 'ja_XX', 'kk': 'kk_KZ',
-        'ko': 'ko_KR', 'lt': 'lt_LT', 'lv': 'lv_LV', 'my': 'my_MM', 'ne': 'ne_NP',
-        'nl': 'nl_XX', 'ro': 'ro_RO', 'ru': 'ru_RU', 'si': 'si_LK', 'tr': 'tr_TR',
-        'vi': 'vi_VN', 'zh': 'zh_CN', 'af': 'af_ZA', 'az': 'az_AZ', 'fa': 'fa_IR',
-        'he': 'he_IL', 'hr': 'hr_HR', 'id': 'id_ID', 'ka': 'ka_GE', 'km': 'km_KH',
-        'mk': 'mk_MK', 'mn': 'mn_MN', 'pl': 'pl_PL', 'ps': 'ps_AF', 'pt': 'pt_XX',
-        'sv': 'sv_SE', 'sw': 'sw_KE', 'th': 'th_TH', 'tl': 'tl_XX', 'uk': 'uk_UA',
-        'ur': 'ur_PK', 'xh': 'xh_ZA', 'gl': 'gl_ES', 'sl': 'sl_SI'
-    }
     
     def __init__(self, use_gpu: bool = True):
-        import torch
-        self.use_gpu = use_gpu and torch.cuda.is_available()
+        self.use_gpu = use_gpu
+        if use_gpu:
+            try:
+                import torch
+                self.use_gpu = torch.cuda.is_available()
+            except:
+                self.use_gpu = False
         self.language_detector = LanguageDetector()
         
         # Lazy load models
@@ -75,29 +64,45 @@ class MultilingualTranslator:
         self.translation_cache = {}
     
     def _load_indic_model(self):
-        """Load MBart-50 model for better Indian language translation"""
+        """Load IndicBART model for better Indian language translation"""
         if self.indic_model is not None:
             return
             
         import torch
-        from transformers import MBartForConditionalGeneration, AutoTokenizer
+        import gc
+        from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
         
-        print("\n🤖 Loading MBart-50 for translation...")
+        # Clear existing memory
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        
+        print("\n🤖 Loading IndicBART for translation...")
         print("   This may take a few minutes on first use...")
         
         try:
-            model_name = "facebook/mbart-large-50-many-to-many-mmt"
+            model_name = "ai4bharat/IndicBARTSS"
             
-            self.indic_tokenizer = AutoTokenizer.from_pretrained(model_name)
-            self.indic_model = MBartForConditionalGeneration.from_pretrained(model_name)
+            self.indic_tokenizer = AutoTokenizer.from_pretrained(
+                model_name,
+                do_lower_case=False,
+                use_fast=False,
+                keep_accents=True
+            )
+            
+            self.indic_model = AutoModelForSeq2SeqLM.from_pretrained(
+                model_name,
+                use_safetensors=True,
+                low_cpu_mem_usage=True
+            )
             
             if self.use_gpu:
                 self.indic_model = self.indic_model.to('cuda')
             
-            print("   ✓ MBart-50 loaded successfully!")
+            print("   ✓ IndicBART loaded successfully!")
             
         except Exception as e:
-            print(f"   ⚠️ Could not load MBart-50: {e}")
+            print(f"   ⚠️ Could not load IndicBART: {e}")
             if "device-side assert" in str(e).lower():
                 print("   🚨 CUDA Context Corrupted. Forcing CPU usage for safety.")
                 self.use_gpu = False
@@ -154,11 +159,16 @@ class MultilingualTranslator:
             
             if target_lang == 'pa' and has_local_punjabi:
                 method = 'local_punjabi'
-            # Use MBart for supported Indian language pairs
-            elif source_lang in self.MBART_CODES and target_lang in self.MBART_CODES:
-                 method = 'indicbart' # Keeping the name internal for compatibility
+            # Use Google for English -> Indian (typically better quality)
+            elif source_lang == 'en' and target_lang != 'en':
+                method = 'google'
+            # Use IndicBART for Indian -> English or Indian -> Indian
+            elif source_lang in self.GOOGLE_CODES and target_lang in self.GOOGLE_CODES:
+                method = 'indicbart'
             else:
                 method = 'google'
+        
+        print(f"   🔄 Translating {source_lang} → {target_lang} using {method}...")
         
         # Perform translation
         start_time = time.time()
@@ -204,6 +214,10 @@ class MultilingualTranslator:
             
             translated_text = ' '.join(translated_chunks)
             
+            # Simple check: if translation is identical to original, it might have failed
+            if len(text) > 50 and translated_text.strip() == text.strip():
+                raise ValueError("Google returned identical text (translation failed)")
+            
             return {
                 'translated_text': translated_text,
                 'source_lang': source_lang,
@@ -214,44 +228,40 @@ class MultilingualTranslator:
             }
             
         except Exception as e:
-            return {
-                'translated_text': text,
-                'source_lang': source_lang,
-                'target_lang': target_lang,
-                'method': 'google',
-                'success': False,
-                'error': str(e)
-            }
+            print(f"⚠️ Google translation failed: {e}")
+            # ONLY fall back to IndicBART if this wasn't already a fallback
+            # We use the 'method' parameter or a flag to check this
+            return self._translate_with_indicbart(text, source_lang, target_lang, is_fallback=True)
     
     def _translate_with_indicbart(
         self,
         text: str,
         source_lang: str,
-        target_lang: str
+        target_lang: str,
+        is_fallback: bool = False
     ) -> Dict:
-        """Translate using MBart-50 model (Internal name kept as indicbart)"""
+        """Translate using IndicBART model"""
         try:
             # Load model if needed
             self._load_indic_model()
             
             if self.indic_model is None:
-                # Fallback to Google
+                if is_fallback:
+                    raise RuntimeError("Both Google and IndicBART failed.")
                 return self._translate_with_google(text, source_lang, target_lang)
             
-            # Map codes
-            src_code = self.MBART_CODES.get(source_lang, 'en_XX')
-            tgt_code = self.MBART_CODES.get(target_lang, 'en_XX')
-
-            # Set source language
-            self.indic_tokenizer.src_lang = src_code
+            # Prepare input in standard IndicBART format: <2src> text </s> <2tgt>
+            # Map simple codes to IndicBART tokens
+            src_tag = f"<2{source_lang}>"
+            tgt_tag = f"<2{target_lang}>"
+            input_text = f"{src_tag} {text} </s> {tgt_tag}"
             
-            # Tokenize
             inputs = self.indic_tokenizer(
-                text,
+                input_text,
                 return_tensors="pt",
                 padding=True,
                 truncation=True,
-                max_length=512
+                max_length=1024
             )
             
             if self.use_gpu:
@@ -262,28 +272,38 @@ class MultilingualTranslator:
             with torch.no_grad():
                 generated_tokens = self.indic_model.generate(
                     **inputs,
-                    forced_bos_token_id=self.indic_tokenizer.lang_code_to_id[tgt_code],
                     max_length=512,
-                    num_beams=4,
+                    num_beams=5,
+                    num_return_sequences=1,
                     early_stopping=True
                 )
             
             # Decode
-            translated_text = self.indic_tokenizer.batch_decode(
-                generated_tokens,
+            translated_text = self.indic_tokenizer.decode(
+                generated_tokens[0],
                 skip_special_tokens=True
-            )[0]
+            )
             
             return {
                 'translated_text': translated_text,
                 'source_lang': source_lang,
                 'target_lang': target_lang,
-                'method': 'indicbart', # Keeping internal identifier
+                'method': 'indicbart',
                 'success': True
             }
             
         except Exception as e:
-            print(f"⚠️ MBart translation failed: {e}")
+            print(f"⚠️ IndicBART translation failed: {e}")
+            if is_fallback:
+                # If we are already a fallback, don't loop back to Google
+                return {
+                    'translated_text': text,
+                    'source_lang': source_lang,
+                    'target_lang': target_lang,
+                    'method': 'failed',
+                    'success': False,
+                    'error': str(e)
+                }
             # Fallback to Google
             return self._translate_with_google(text, source_lang, target_lang)
 
@@ -346,6 +366,7 @@ class MultilingualTranslator:
                 inputs = {k: v.to('cuda') for k, v in inputs.items()}
             
             # Generate translation
+            import torch
             with torch.no_grad():
                 try:
                     generated_tokens = self.punjabi_model.generate(

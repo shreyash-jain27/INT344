@@ -33,8 +33,11 @@ class AbstractiveSummarizer:
         
         # Auto-detect device
         if device is None:
-            import torch
-            self.device = 0 if torch.cuda.is_available() else -1
+            try:
+                import torch
+                self.device = 0 if torch.cuda.is_available() else -1
+            except:
+                self.device = -1
         else:
             self.device = 0 if device == 'cuda' else -1
         
@@ -56,7 +59,13 @@ class AbstractiveSummarizer:
         print("   Loading model (this may take a minute)...")
         
         import torch
+        import gc
         from transformers import pipeline, AutoTokenizer
+        
+        # Clear existing memory
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
         
         try:
             # Try pipeline first (easier)
@@ -65,7 +74,8 @@ class AbstractiveSummarizer:
                 "summarization",
                 model=self.model_name,
                 device=self.device,
-                torch_dtype=torch.float16 if self.device == 0 else torch.float32
+                torch_dtype=torch.float16 if self.device == 0 else torch.float32,
+                model_kwargs={"low_cpu_mem_usage": True}
             )
             
             print("   ✓ Model loaded successfully!")
@@ -355,28 +365,38 @@ class AbstractiveSummarizer:
 # Utility function for best model selection
 # ============================================
 
+_BEST_MODEL_CACHE = None
+
 def get_best_model(use_gpu: bool = True) -> str:
     """
     Select best model based on available resources
     """
+    global _BEST_MODEL_CACHE
+    if _BEST_MODEL_CACHE is not None:
+        return _BEST_MODEL_CACHE
+        
     if not use_gpu:
-        return 't5-small'  # Smaller, faster on CPU
+        _BEST_MODEL_CACHE = 't5-small'
+        return _BEST_MODEL_CACHE
     
-    import torch
-    # Check GPU memory
     try:
+        import torch
+        # Check GPU memory
         if torch.cuda.is_available():
             gpu_memory = torch.cuda.get_device_properties(0).total_memory / 1e9
             
             if gpu_memory >= 6:  # 6GB or more
-                return 'facebook/bart-large-cnn'  # Best quality
+                _BEST_MODEL_CACHE = 'facebook/bart-large-cnn'
             elif gpu_memory >= 4:
-                return 't5-base'  # Good balance
+                _BEST_MODEL_CACHE = 't5-base'
             else:
-                return 't5-small'  # Smaller footprint
+                _BEST_MODEL_CACHE = 't5-small'
+        else:
+            _BEST_MODEL_CACHE = 't5-small'
+            
     except Exception as e:
-        print(f"⚠️ Error checking GPU memory: {e}. Defaulting to t5-small on CPU.")
-        return 't5-small'
+        print(f"⚠️ Error checking GPU memory: {e}. Defaulting to t5-small.")
+        _BEST_MODEL_CACHE = 't5-small'
     
-    return 't5-small'
+    return _BEST_MODEL_CACHE
 

@@ -25,8 +25,14 @@ class MultilingualSummarizer:
     """
     
     def __init__(self, use_gpu: bool = True):
-        import torch
-        self.use_gpu = use_gpu and torch.cuda.is_available()
+        # We check CUDA availability lazily or via sys.modules to avoid Streamlit watcher issues
+        self.use_gpu = use_gpu 
+        if use_gpu:
+            try:
+                import torch
+                self.use_gpu = torch.cuda.is_available()
+            except:
+                self.use_gpu = False
         
         # Initialize components
         self.language_detector = LanguageDetector()
@@ -56,15 +62,20 @@ class MultilingualSummarizer:
             from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
             model_name = "ai4bharat/IndicBARTSS"
             
+            import gc
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            
             self.indic_tokenizer = AutoTokenizer.from_pretrained(
                 model_name,
                 do_lower_case=False,
-                # use_fast=False
             )
             
             self.indic_model = AutoModelForSeq2SeqLM.from_pretrained(
                 model_name,
-                use_safetensors=True
+                use_safetensors=True,
+                low_cpu_mem_usage=True
             )
             
             if self.use_gpu:
@@ -89,7 +100,7 @@ class MultilingualSummarizer:
                 "summarization",
                 model="facebook/mbart-large-50",
                 device=0 if self.use_gpu else -1,
-                model_kwargs={"use_safetensors": True}
+                model_kwargs={"use_safetensors": True, "low_cpu_mem_usage": True}
             )
             print("   ✓ mBART loaded!")
         except Exception as e:
@@ -161,14 +172,22 @@ class MultilingualSummarizer:
         # Perform summarization
         if method == 'direct':
             if source_lang == 'en':
-                # Use English summarizer
-                result = self.english_summarizer.summarize(
-                    text,
-                    method='hybrid',
-                    max_length=max_length
-                )
-                summary = result.summary
-                summ_method = 'english-hybrid'
+                # If target is also English, use standard English summarizer
+                if output_lang == 'en':
+                    result = self.english_summarizer.summarize(
+                        text,
+                        method='hybrid',
+                        max_length=max_length
+                    )
+                    summary = result.summary
+                    summ_method = 'english-hybrid'
+                else:
+                    # Cross-lingual: use translate-summarize-translate
+                    # because standard English summarizer only outputs English
+                    summary = self._translate_summarize_translate(
+                        text, source_lang, output_lang, max_length
+                    )
+                    summ_method = 'translate-summarize-translate'
             else:
                 # Try IndicBART
                 summary = self._summarize_with_indicbart(
@@ -216,8 +235,9 @@ class MultilingualSummarizer:
                 # Fallback
                 return self._translate_summarize_translate(text, lang, lang, max_length)
             
-            # Prepare input
-            input_text = f"<{lang}> {text}"
+            # Prepare input in IndicBART format for summarization: <2lang> text </s> <2lang>
+            tag = f"<2{lang}>"
+            input_text = f"{tag} {text} </s> {tag}"
             
             inputs = self.indic_tokenizer(
                 input_text,

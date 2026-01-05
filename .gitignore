@@ -10,5 +10,5 @@ eval_output/
 *.pyc
 .env
 
-viva_prep/
+# viva_prep/
 

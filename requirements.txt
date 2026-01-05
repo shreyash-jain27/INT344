@@ -7,3 +7,10 @@ sentencepiece
 sumy
 textstat
 transformers
+deep-translator
+pdfplumber
+nltk
+torch
+streamlit
+easyocr
+pytesseract
